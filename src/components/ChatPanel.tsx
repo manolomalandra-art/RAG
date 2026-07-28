@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLang } from "@/context/LangContext";
 import { supabase } from "@/lib/supabase";
 import { ReportItem } from "@/components/ReportPDF";
+import { TribologyRow, FinancialRow } from "@/lib/parseFile";
 import { Send, Bot, User, Loader2, MessageCircle } from "lucide-react";
 
 interface ChatMessage {
@@ -13,23 +14,67 @@ interface ChatMessage {
 
 interface ChatPanelProps {
   reportItems: ReportItem[];
+  tribologyData: TribologyRow[];
+  financialData: FinancialRow[];
 }
 
-function buildContext(items: ReportItem[]): string {
-  return items
-    .map(
+function buildContext(
+  reportItems: ReportItem[],
+  tribologyData: TribologyRow[],
+  financialData: FinancialRow[]
+): string {
+  const sections: string[] = [];
+
+  // 1. Tribology raw data
+  if (tribologyData.length > 0) {
+    const tribLines = tribologyData.map(
+      (r, i) =>
+        `[${i + 1}] Family: ${r.family} | Maker: ${r.maker} | Model: ${r.model} | Tag: ${r.tag} | Serial: ${r.serial}\n` +
+        `    Compartment: ${r.compartmentName} (${r.compartmentType}) | Hours: ${r.hoursAtSampling} | Site: ${r.site}\n` +
+        `    Status: ${r.status} | Evaluation: ${r.evaluation} | Recommendation: ${r.recommendation}`
+    );
+    sections.push(
+      `=== TRIBOLOGY DATA (${tribologyData.length} samples) ===\n${tribLines.join("\n")}`
+    );
+  }
+
+  // 2. Financial raw data
+  if (financialData.length > 0) {
+    const finLines = financialData.map(
+      (r, i) =>
+        `[${i + 1}] Family: ${r.family} | Maker: ${r.maker} | Model: ${r.model} | Compartment: ${r.compartmentType}\n` +
+        `    Part: ${r.partName} | Part Cost: R$ ${r.partCost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n` +
+        `    Labor: ${r.laborHours}h x R$ ${r.laborRate.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} = R$ ${(r.laborHours * r.laborRate).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n` +
+        `    Total: R$ ${r.totalCost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+    );
+    sections.push(
+      `=== FINANCIAL DATA (${financialData.length} parts) ===\n${finLines.join("\n")}`
+    );
+  }
+
+  // 3. Cross-referenced report (summary)
+  if (reportItems.length > 0) {
+    const repLines = reportItems.map(
       (item, i) =>
-        `[${i + 1}] ${item.equipment} — ${item.compartment} (${item.compartmentType})\n` +
-        `    Site: ${item.site} | Tag: ${item.tag} | Serial: ${item.serial}\n` +
+        `[${i + 1}] ${item.equipment} — ${item.compartment} (${item.compartmentType}) | Site: ${item.site} | Tag: ${item.tag} | Serial: ${item.serial}\n` +
         `    Status: ${item.severity} | Cost: R$ ${item.cost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}\n` +
         `    Breakdown: ${item.costBreakdown}\n` +
         `    Evaluation: ${item.evaluation}\n` +
         `    Recommendation: ${item.recommendation}`
-    )
-    .join("\n\n");
+    );
+    sections.push(
+      `=== CROSS-REFERENCED REPORT (${reportItems.length} equipment-compartment items) ===\n${repLines.join("\n")}`
+    );
+  }
+
+  return sections.join("\n\n");
 }
 
-export default function ChatPanel({ reportItems }: ChatPanelProps) {
+export default function ChatPanel({
+  reportItems,
+  tribologyData,
+  financialData,
+}: ChatPanelProps) {
   const { t, lang } = useLang();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -53,7 +98,7 @@ export default function ChatPanel({ reportItems }: ChatPanelProps) {
     setError(null);
 
     try {
-      const context = buildContext(reportItems);
+      const context = buildContext(reportItems, tribologyData, financialData);
       const history = messages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -80,7 +125,7 @@ export default function ChatPanel({ reportItems }: ChatPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, reportItems, lang]);
+  }, [input, loading, messages, reportItems, tribologyData, financialData, lang]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -98,7 +143,7 @@ export default function ChatPanel({ reportItems }: ChatPanelProps) {
           {t.chat?.title || "Chat com IA"}
         </h3>
         <span className="text-[11px] text-gray-500 ml-auto">
-          {t.chat?.contextHint || "AIA com contexto dos arquivos carregados"}
+          {tribologyData.length} tribologia | {financialData.length} financeiro
         </span>
       </div>
 

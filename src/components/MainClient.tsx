@@ -324,7 +324,11 @@ export default function MainClient() {
             </div>
 
             {/* Chat Panel */}
-            <ChatPanel reportItems={reportItems} />
+            <ChatPanel
+              reportItems={reportItems}
+              tribologyData={tribologyData || []}
+              financialData={financialData || []}
+            />
           </div>
         )}
 
