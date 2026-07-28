@@ -148,65 +148,79 @@ export default function MainClient() {
       {/* Hidden download anchor */}
       <a ref={downloadRef} className="hidden" />
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-7xl px-6 py-6">
         {!reportItems && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <UploadZone
-                title={t.zones.financial.title}
-                desc={t.zones.financial.desc}
-                hint={t.zones.financial.hint}
-                rowsLabel={t.zones.financial.rows}
-                onParsed={handleFinancialParsed}
-                useFinancialParser
-              />
-              <UploadZone
-                title={t.zones.tribology.title}
-                desc={t.zones.tribology.desc}
-                hint={t.zones.tribology.hint}
-                rowsLabel={t.zones.tribology.rows}
-                onParsed={handleTribologyParsed}
-                useTribologyParser
-              />
-              <UploadZone
-                title={t.zones.thermography.title}
-                desc={t.zones.thermography.desc}
-                hint={t.zones.thermography.hint}
-                rowsLabel={t.zones.thermography.rows || ""}
-                onParsed={handleThermographyParsed}
-              />
-              <UploadZone
-                title={t.zones.vibrations.title}
-                desc={t.zones.vibrations.desc}
-                hint={t.zones.vibrations.hint}
-                rowsLabel={t.zones.vibrations.rows || ""}
-                onParsed={handleVibrationsParsed}
-              />
-            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+              {/* Upload zones - left */}
+              <div className="lg:col-span-2 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
+                  <UploadZone
+                    title={t.zones.financial.title}
+                    desc={t.zones.financial.desc}
+                    hint={t.zones.financial.hint}
+                    rowsLabel={t.zones.financial.rows}
+                    onParsed={handleFinancialParsed}
+                    useFinancialParser
+                  />
+                  <UploadZone
+                    title={t.zones.tribology.title}
+                    desc={t.zones.tribology.desc}
+                    hint={t.zones.tribology.hint}
+                    rowsLabel={t.zones.tribology.rows}
+                    onParsed={handleTribologyParsed}
+                    useTribologyParser
+                  />
+                  <UploadZone
+                    title={t.zones.thermography.title}
+                    desc={t.zones.thermography.desc}
+                    hint={t.zones.thermography.hint}
+                    rowsLabel={t.zones.thermography.rows || ""}
+                    onParsed={handleThermographyParsed}
+                  />
+                  <UploadZone
+                    title={t.zones.vibrations.title}
+                    desc={t.zones.vibrations.desc}
+                    hint={t.zones.vibrations.hint}
+                    rowsLabel={t.zones.vibrations.rows || ""}
+                    onParsed={handleVibrationsParsed}
+                  />
+                </div>
 
-            <div className="mt-8 flex flex-col items-center gap-3">
-              <button
-                onClick={handleProcess}
-                disabled={!canProcess || processing}
-                className="flex items-center gap-2.5 rounded-2xl bg-blue-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-500 hover:shadow-blue-500/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {processing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t.processing}
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-4 w-4" />
-                    {t.process}
-                  </>
-                )}
-              </button>
-              {!canProcess && (
-                <p className="text-xs text-gray-500 text-center max-w-md">
-                  {t.noData}
-                </p>
-              )}
+                <div className="flex flex-col items-center gap-2 pt-2">
+                  <button
+                    onClick={handleProcess}
+                    disabled={!canProcess || processing}
+                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-semibold text-white shadow-lg shadow-blue-600/25 hover:bg-blue-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {processing ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {t.processing}
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-3.5 w-3.5" />
+                        {t.process}
+                      </>
+                    )}
+                  </button>
+                  {!canProcess && (
+                    <p className="text-[11px] text-gray-500 text-center max-w-xs">
+                      {t.noData}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Chat - right */}
+              <div className="lg:col-span-3">
+                <ChatPanel
+                  reportItems={reportItems}
+                  tribologyData={tribologyData || []}
+                  financialData={financialData || []}
+                />
+              </div>
             </div>
           </>
         )}

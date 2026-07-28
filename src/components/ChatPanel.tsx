@@ -13,16 +13,48 @@ interface ChatMessage {
 }
 
 interface ChatPanelProps {
-  reportItems: ReportItem[];
+  reportItems: ReportItem[] | null;
   tribologyData: TribologyRow[];
   financialData: FinancialRow[];
 }
 
 function buildContext(
-  reportItems: ReportItem[],
+  reportItems: ReportItem[] | null,
   tribologyData: TribologyRow[],
   financialData: FinancialRow[]
 ): string {
+  // If no data uploaded, return site context
+  if (tribologyData.length === 0 && financialData.length === 0) {
+    return `=== ABOUT THIS PLATFORM ===
+This is the ALS Industrial Health Diagnosis Platform. It is a predictive maintenance tool that combines tribology lab analysis with financial cost data to generate health reports for industrial equipment.
+
+HOW IT WORKS:
+1. UPLOAD FILES: The user uploads up to 4 types of files:
+   - Financial Data (CSV): Contains equipment maintenance and replacement costs per compartment (part cost, labor hours, labor rate)
+   - Tribology ALS (Excel): Contains oil analysis and wear results from ALS lab (status, evaluation, recommendation per sample)
+   - Thermography (CSV/Excel): Thermal inspection data (stored for future analysis)
+   - Vibrations (CSV/Excel): Vibration analysis data (stored for future analysis)
+
+2. PROCESS: Clicking "Process" cross-references tribology data with financial data using (Family + Model + Compartment Type) as the matching key. Each equipment-compartment combination gets:
+   - Worst status from tribology samples (Normal → Caution → Abnormal → Severe)
+   - Total replacement cost from financial data (Part Cost + Labor Hours x Labor Rate)
+   - AI-generated evaluation and maintenance recommendation
+
+3. REPORT: A table shows all equipment with health status (green=healthy, red=replacement needed) and estimated costs. A PDF can be downloaded.
+
+4. CHAT: The user can ask questions about the uploaded data in natural language. The AI has full context of all uploaded files.
+
+WHAT YOU CAN ANSWER:
+- How the platform works
+- What each zone accepts
+- How cross-referencing works
+- What the status levels mean
+- General industrial maintenance questions
+- Guide the user through uploading files
+
+You respond in the same language the user writes in.`;
+  }
+
   const sections: string[] = [];
 
   // 1. Tribology raw data
@@ -53,7 +85,7 @@ function buildContext(
   }
 
   // 3. Cross-referenced report (summary)
-  if (reportItems.length > 0) {
+  if (reportItems && reportItems.length > 0) {
     const repLines = reportItems.map(
       (item, i) =>
         `[${i + 1}] ${item.equipment} — ${item.compartment} (${item.compartmentType}) | Site: ${item.site} | Tag: ${item.tag} | Serial: ${item.serial}\n` +
@@ -143,7 +175,9 @@ export default function ChatPanel({
           {t.chat?.title || "Chat com IA"}
         </h3>
         <span className="text-[11px] text-gray-500 ml-auto">
-          {tribologyData.length} tribologia | {financialData.length} financeiro
+          {tribologyData.length > 0 || financialData.length > 0
+            ? `${tribologyData.length} tribologia | ${financialData.length} financeiro`
+            : t.chat?.contextHint || "Contexto do site"}
         </span>
       </div>
 
