@@ -13,7 +13,21 @@ serve(async (req) => {
   }
 
   try {
-    const { items, lang, thermographyCount = 0, vibrationsCount = 0 } = await req.json();
+    const bodyText = await req.text();
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(bodyText);
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body", raw: bodyText.substring(0, 500) }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const items = parsed.items as Record<string, unknown>[];
+    const lang = (parsed.lang as string) || "pt";
+    const thermographyCount = (parsed.thermographyCount as number) || 0;
+    const vibrationsCount = (parsed.vibrationsCount as number) || 0;
     const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
 
     if (!openrouterKey) {
