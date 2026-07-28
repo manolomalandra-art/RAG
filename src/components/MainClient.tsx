@@ -5,6 +5,7 @@ import { useLang } from "@/context/LangContext";
 import LanguageModal from "@/components/LanguageModal";
 import UploadZone from "@/components/UploadZone";
 import ReportPDF, { ReportItem } from "@/components/ReportPDF";
+import ChatPanel from "@/components/ChatPanel";
 import {
   crossReference,
   type TribologyRow,
@@ -321,6 +322,9 @@ export default function MainClient() {
                 </span>
               </span>
             </div>
+
+            {/* Chat Panel */}
+            <ChatPanel reportItems={reportItems} />
           </div>
         )}
 

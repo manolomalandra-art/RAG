@@ -53,4 +53,10 @@ export const en = {
   back: "Back",
   poweredBy: "Powered by OpenRouter AI",
   supabase: "Backend: Supabase",
+  chat: {
+    title: "Chat with AI",
+    contextHint: "AI with context from uploaded files",
+    empty: "Ask questions about equipment data, costs, health status, or maintenance recommendations.",
+    placeholder: "Type your question...",
+  },
 };
