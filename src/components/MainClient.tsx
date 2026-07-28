@@ -142,6 +142,7 @@ export default function MainClient() {
                 hint={t.zones.financial.hint}
                 rowsLabel={t.zones.financial.rows}
                 onParsed={handleFinancialParsed}
+                useFinancialParser
               />
               <UploadZone
                 title={t.zones.tribology.title}

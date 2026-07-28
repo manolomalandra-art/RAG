@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Upload, FileSpreadsheet, CheckCircle } from "lucide-react";
-import { parseFile, parseTribologyExcel } from "@/lib/parseFile";
+import { parseFile, parseTribologyExcel, parseFinancialCSV } from "@/lib/parseFile";
 
 interface UploadZoneProps {
   title: string;
@@ -12,6 +12,7 @@ interface UploadZoneProps {
   onParsed: (data: Record<string, unknown>[]) => void;
   disabled?: boolean;
   useTribologyParser?: boolean;
+  useFinancialParser?: boolean;
 }
 
 export default function UploadZone({
@@ -22,6 +23,7 @@ export default function UploadZone({
   onParsed,
   disabled,
   useTribologyParser,
+  useFinancialParser,
 }: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -38,6 +40,9 @@ export default function UploadZone({
       let data: Record<string, unknown>[];
       if (useTribologyParser && file.name.endsWith(".xlsx")) {
         const rows = await parseTribologyExcel(file);
+        data = rows as unknown as Record<string, unknown>[];
+      } else if (useFinancialParser && file.name.endsWith(".csv")) {
+        const rows = await parseFinancialCSV(file);
         data = rows as unknown as Record<string, unknown>[];
       } else {
         data = await parseFile(file);

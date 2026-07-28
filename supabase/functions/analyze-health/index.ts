@@ -39,26 +39,15 @@ serve(async (req) => {
 
     const prompt = `You are an industrial health diagnostic expert for ALS Global. You receive equipment data that was ALREADY cross-referenced between tribology lab results and financial cost data.
 
-Your task: analyze each item and provide a final diagnostic summary in ${langMap[lang] || "Portuguese (Brazilian)"}.
+Your task: for EACH item, provide a brief diagnostic evaluation and recommendation in ${langMap[lang] || "Portuguese (Brazilian)"}.
 
-For EACH item, return:
-- "equipment": full equipment identifier (e.g. "HARVESTER KOMATSU PC200 - MOTOR")
-- "tag": the fleet tag
-- "serial": the serial number
-- "site": the site/plant
-- "compartment": compartment name
-- "status": "healthy" if status is Normal or Caution AND cost is R$ 0, "replacement" if status is Abnormal or Severe
-- "severity": the original severity (Normal/Caution/Abnormal/Severe)
-- "cost": the total replacement cost in R$ (0 for healthy items)
-- "costBreakdown": detailed cost breakdown from the financial file
-- "evaluation": brief diagnostic based on the tribology evaluation (1-2 sentences)
-- "recommendation": actionable maintenance recommendation in ${langMap[lang] || "Portuguese (Brazilian)"} based on the inspection actions
+DO NOT return cost values - they are already calculated. ONLY return:
+- "evaluation": 1-2 sentence diagnostic based on the tribology evaluation
+- "recommendation": short actionable maintenance recommendation (1-2 sentences max)
 
-Rules:
-- GREEN (status "healthy", cost R$ 0,00): Equipment is operating within normal parameters
-- RED (status "replacement", cost > 0): Equipment needs attention, cost is the repair/replacement estimate
-- Keep recommendations SHORT and ACTIONABLE (1-2 sentences max)
-- Return ONLY valid JSON array, no markdown fences, no explanation
+Return a JSON array with the SAME number of items as input, in the SAME order.
+Each item: {"evaluation": "...", "recommendation": "..."}
+Return ONLY valid JSON array, no markdown fences, no explanation.
 
 DATA:
 ${itemsSummary}`;
@@ -108,9 +97,25 @@ ${itemsSummary}`;
 
     // Extract JSON array
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    let analyzedItems = jsonMatch ? JSON.parse(jsonMatch[0]) : items;
+    const llmItems = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
 
-    // Ensure all original items are present (LLM might miss some)
+    // MERGE: use LLM for evaluation/recommendation, but PRESERVE original costs
+    let analyzedItems = items.map((original: Record<string, unknown>, idx: number) => {
+      const llm = llmItems[idx] || {};
+      return {
+        ...original,
+        // Keep the REAL cost from cross-reference (never use LLM cost)
+        cost: original.cost,
+        costBreakdown: original.costBreakdown,
+        status: original.status,
+        severity: original.severity,
+        // Use LLM only for text improvements
+        evaluation: llm.evaluation || original.evaluation,
+        recommendation: llm.recommendation || original.recommendation,
+      };
+    });
+
+    // Ensure all original items are present
     if (analyzedItems.length < items.length) {
       analyzedItems = items;
     }
