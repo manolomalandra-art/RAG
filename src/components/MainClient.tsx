@@ -19,6 +19,8 @@ export default function MainClient() {
   const [langModalOpen, setLangModalOpen] = useState(false);
   const [tribologyData, setTribologyData] = useState<TribologyRow[] | null>(null);
   const [financialData, setFinancialData] = useState<FinancialRow[] | null>(null);
+  const [thermographyData, setThermographyData] = useState<Record<string, unknown>[] | null>(null);
+  const [vibrationsData, setVibrationsData] = useState<Record<string, unknown>[] | null>(null);
   const [processing, setProcessing] = useState(false);
   const [reportItems, setReportItems] = useState<ReportItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,14 @@ export default function MainClient() {
 
   const handleFinancialParsed = useCallback((data: Record<string, unknown>[]) => {
     setFinancialData(data as unknown as FinancialRow[]);
+  }, []);
+
+  const handleThermographyParsed = useCallback((data: Record<string, unknown>[]) => {
+    setThermographyData(data);
+  }, []);
+
+  const handleVibrationsParsed = useCallback((data: Record<string, unknown>[]) => {
+    setVibrationsData(data);
   }, []);
 
   const handleProcess = useCallback(async () => {
@@ -58,7 +68,12 @@ export default function MainClient() {
       const { data, error: fnError } = await supabase.functions.invoke(
         "analyze-health",
         {
-          body: { items, lang },
+          body: {
+            items,
+            lang,
+            thermographyCount: thermographyData?.length || 0,
+            vibrationsCount: vibrationsData?.length || 0,
+          },
         }
       );
 
@@ -69,7 +84,7 @@ export default function MainClient() {
     } finally {
       setProcessing(false);
     }
-  }, [canProcess, tribologyData, financialData, lang, t]);
+  }, [canProcess, tribologyData, financialData, thermographyData, vibrationsData, lang, t]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!reportItems) return;
@@ -156,17 +171,15 @@ export default function MainClient() {
                 title={t.zones.thermography.title}
                 desc={t.zones.thermography.desc}
                 hint={t.zones.thermography.hint}
-                rowsLabel=""
-                onParsed={() => {}}
-                disabled
+                rowsLabel={t.zones.thermography.rows || ""}
+                onParsed={handleThermographyParsed}
               />
               <UploadZone
                 title={t.zones.vibrations.title}
                 desc={t.zones.vibrations.desc}
                 hint={t.zones.vibrations.hint}
-                rowsLabel=""
-                onParsed={() => {}}
-                disabled
+                rowsLabel={t.zones.vibrations.rows || ""}
+                onParsed={handleVibrationsParsed}
               />
             </div>
 

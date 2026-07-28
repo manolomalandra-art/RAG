@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { items, lang } = await req.json();
+    const { items, lang, thermographyCount = 0, vibrationsCount = 0 } = await req.json();
     const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
 
     if (!openrouterKey) {
@@ -44,6 +44,8 @@ Your task: for EACH item, provide a brief diagnostic evaluation and recommendati
 DO NOT return cost values - they are already calculated. ONLY return:
 - "evaluation": 1-2 sentence diagnostic based on the tribology evaluation
 - "recommendation": short actionable maintenance recommendation (1-2 sentences max)
+
+IMPORTANT: Thermography (${thermographyCount} records) and Vibrations (${vibrationsCount} records) files were also uploaded. IGNORE them completely. Do NOT mention thermography or vibrations in your analysis. Focus ONLY on the tribology and financial data provided below.
 
 Return a JSON array with the SAME number of items as input, in the SAME order.
 Each item: {"evaluation": "...", "recommendation": "..."}
