@@ -14,19 +14,19 @@ serve(async (req) => {
 
   try {
     const { financial, tribology, lang } = await req.json();
-    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
 
-    if (!geminiKey) {
-      throw new Error("GEMINI_API_KEY not configured");
+    if (!openrouterKey) {
+      throw new Error("OPENROUTER_API_KEY not configured");
     }
 
     const financialSummary =
-      financial.length > 0
+      financial && financial.length > 0
         ? `\nFINANCIAL DATA (${financial.length} rows):\n${JSON.stringify(financial.slice(0, 50), null, 2)}`
         : "\nNo financial data provided.";
 
     const tribologySummary =
-      tribology.length > 0
+      tribology && tribology.length > 0
         ? `\nTRIBOLOGY DATA (${tribology.length} rows):\n${JSON.stringify(tribology.slice(0, 50), null, 2)}`
         : "\nNo tribology data provided.";
 
@@ -49,31 +49,56 @@ Rules:
 - Red/Alert (status "replacement", cost > 0): equipment with high wear, critical levels, or replacement costs
 - If financial data has replacement costs, use those for the cost field
 - If tribology data shows elements above threshold, flag as replacement
-- Return ONLY valid JSON array, no markdown, no explanation
+- Return ONLY valid JSON array, no markdown fences, no explanation
 
 ${financialSummary}
 ${tribologySummary}`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      "https://openrouter.ai/api/v1/chat/completions",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${openrouterKey}`,
+          "HTTP-Referer": "https://industrial-report.als.com",
+          "X-Title": "ALS Industrial Report",
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 4096,
-          },
+          model: "nvidia/nemotron-3-super-120b-a12b:free",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3,
+          max_tokens: 4096,
         }),
       }
     );
 
-    const geminiData = await response.json();
-    const rawText =
-      geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    const llmData = await response.json();
 
-    // Extract JSON from the response (handle markdown code blocks)
+    if (llmData.error) {
+      return new Response(
+        JSON.stringify({ error: "LLM API error", details: llmData.error }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const rawText =
+      llmData?.choices?.[0]?.message?.content || "";
+
+    if (!rawText) {
+      return new Response(
+        JSON.stringify({ error: "Empty LLM response", raw: llmData }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Extract JSON array from the response
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
     const items = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
 
@@ -84,8 +109,8 @@ ${tribologySummary}`;
 
     await supabase.from("reports").insert({
       lang,
-      financial_rows: financial.length,
-      tribology_rows: tribology.length,
+      financial_rows: financial?.length || 0,
+      tribology_rows: tribology?.length || 0,
       items,
     });
 

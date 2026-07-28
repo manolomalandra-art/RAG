@@ -31,7 +31,7 @@ export const es = {
     },
   },
   process: "Procesar",
-  processing: "Procesando con Gemini 1.5 Flash...",
+  processing: "Procesando con IA...",
   downloadPdf: "Descargar Reporte PDF",
   noData: "No hay datos para procesar. Suba al menos un archivo en las zonas financieras o de tribología.",
   report: {
@@ -48,6 +48,6 @@ export const es = {
     footer: "Reporte generado por la plataforma de Diagnóstico Industrial — ALS Global",
   },
   back: "Volver",
-  poweredBy: "Potenciado por Google Gemini 1.5 Flash",
+  poweredBy: "Potenciado por OpenRouter AI",
   supabase: "Backend: Supabase",
 };
