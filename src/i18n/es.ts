@@ -43,6 +43,7 @@ export const es = {
     healthy: "Saludable",
     replacement: "Requiere Reemplazo",
     cost: "Costo Estimado (R$)",
+    evaluation: "Evaluación",
     recommendation: "Recomendación",
     noRecommendation: "Sin recomendación específica",
     footer: "Reporte generado por la plataforma de Diagnóstico Industrial — ALS Global",

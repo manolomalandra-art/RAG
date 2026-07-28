@@ -10,9 +10,18 @@ import {
 
 export interface ReportItem {
   equipment: string;
+  tag?: string;
+  serial?: string;
+  site?: string;
+  compartment?: string;
+  compartmentType?: string;
   status: "healthy" | "replacement";
+  severity: string;
   cost: number;
+  costBreakdown?: string;
+  evaluation: string;
   recommendation: string;
+  sampleCount?: number;
 }
 
 interface ReportPDFProps {
@@ -27,6 +36,7 @@ interface ReportPDFProps {
     healthy: string;
     replacement: string;
     cost: string;
+    evaluation: string;
     recommendation: string;
     footer: string;
   };
@@ -34,81 +44,82 @@ interface ReportPDFProps {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontSize: 10,
+    padding: 35,
+    fontSize: 9,
     fontFamily: "Helvetica",
     backgroundColor: "#ffffff",
   },
   header: {
-    marginBottom: 30,
+    marginBottom: 20,
     borderBottomWidth: 2,
     borderBottomColor: "#1e40af",
-    paddingBottom: 15,
+    paddingBottom: 12,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#1e293b",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#64748b",
   },
   summaryBox: {
     backgroundColor: "#f8fafc",
     borderWidth: 1,
     borderColor: "#e2e8f0",
-    borderRadius: 6,
-    padding: 14,
-    marginBottom: 24,
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 16,
   },
   summaryTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "bold",
     color: "#334155",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   summaryLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: "#475569",
   },
   summaryValue: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "bold",
     color: "#1e293b",
   },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#1e293b",
-    borderRadius: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginBottom: 4,
-  },
-  th: {
-    fontSize: 9,
+  sectionTitle: {
+    fontSize: 12,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: "#1e293b",
+    marginBottom: 8,
+    marginTop: 12,
   },
-  tableRow: {
+  itemCard: {
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 8,
+  },
+  itemHeader: {
     flexDirection: "row",
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#e2e8f0",
-    paddingVertical: 7,
-    paddingHorizontal: 10,
+    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 6,
   },
-  td: {
-    fontSize: 9,
-    color: "#334155",
+  itemName: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#1e293b",
+    flex: 1,
   },
-  statusBadgeHealthy: {
+  badgeHealthy: {
     backgroundColor: "#dcfce7",
     color: "#166534",
     paddingHorizontal: 6,
@@ -116,9 +127,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     fontSize: 8,
     fontWeight: "bold",
-    textAlign: "center",
   },
-  statusBadgeReplacement: {
+  badgeReplacement: {
     backgroundColor: "#fee2e2",
     color: "#dc2626",
     paddingHorizontal: 6,
@@ -126,7 +136,31 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     fontSize: 8,
     fontWeight: "bold",
-    textAlign: "center",
+  },
+  itemDetail: {
+    fontSize: 8,
+    color: "#64748b",
+    marginBottom: 2,
+  },
+  itemEval: {
+    fontSize: 8,
+    color: "#334155",
+    marginTop: 4,
+    lineHeight: 1.4,
+  },
+  itemRec: {
+    fontSize: 8,
+    color: "#1e40af",
+    marginTop: 3,
+    fontStyle: "italic",
+  },
+  costRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+    paddingTop: 4,
+    borderTopWidth: 0.5,
+    borderTopColor: "#e2e8f0",
   },
   costHealthy: {
     fontSize: 9,
@@ -140,15 +174,15 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: "absolute",
-    bottom: 30,
-    left: 40,
-    right: 40,
+    bottom: 25,
+    left: 35,
+    right: 35,
     textAlign: "center",
-    fontSize: 8,
+    fontSize: 7,
     color: "#94a3b8",
     borderTopWidth: 0.5,
     borderTopColor: "#e2e8f0",
-    paddingTop: 10,
+    paddingTop: 8,
   },
 });
 
@@ -197,35 +231,61 @@ export default function ReportPDF({
           </View>
         </View>
 
-        <View style={styles.tableHeader}>
-          <Text style={[styles.th, { flex: 2 }]}>{labels.equipment}</Text>
-          <Text style={[styles.th, { flex: 1.5 }]}>{labels.status}</Text>
-          <Text style={[styles.th, { flex: 1, textAlign: "right" }]}>{labels.cost}</Text>
-        </View>
+        <Text style={styles.sectionTitle}>{labels.equipment}</Text>
 
         {items.map((item, idx) => (
-          <View key={idx} style={styles.tableRow}>
-            <Text style={[styles.td, { flex: 2 }]}>{item.equipment}</Text>
-            <View style={{ flex: 1.5 }}>
+          <View key={idx} style={styles.itemCard}>
+            <View style={styles.itemHeader}>
+              <Text style={styles.itemName}>
+                {item.equipment} — {item.compartment || item.compartment}
+              </Text>
               <Text
                 style={
                   item.status === "healthy"
-                    ? styles.statusBadgeHealthy
-                    : styles.statusBadgeReplacement
+                    ? styles.badgeHealthy
+                    : styles.badgeReplacement
                 }
               >
                 {item.status === "healthy" ? labels.healthy : labels.replacement}
               </Text>
             </View>
-            <Text
-              style={[
-                item.status === "healthy" ? styles.costHealthy : styles.costReplacement,
-                { flex: 1, textAlign: "right" },
-              ]}
-            >
-              R${" "}
-              {item.cost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+
+            {item.tag && (
+              <Text style={styles.itemDetail}>
+                Tag: {item.tag} | Serial: {item.serial} | Site: {item.site}
+              </Text>
+            )}
+            <Text style={styles.itemDetail}>
+              Severidad: {item.severity} | Muestras: {item.sampleCount || 1}
             </Text>
+
+            {item.evaluation ? (
+              <Text style={styles.itemEval}>{item.evaluation}</Text>
+            ) : null}
+
+            {item.recommendation ? (
+              <Text style={styles.itemRec}>
+                {labels.recommendation}: {item.recommendation}
+              </Text>
+            ) : null}
+
+            <View style={styles.costRow}>
+              <Text style={styles.itemDetail}>{labels.cost}</Text>
+              <Text
+                style={
+                  item.status === "healthy" ? styles.costHealthy : styles.costReplacement
+                }
+              >
+                R${" "}
+                {item.cost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </Text>
+            </View>
+
+            {item.costBreakdown && item.costBreakdown !== "Sin datos financieros" && (
+              <Text style={[styles.itemDetail, { marginTop: 2, fontSize: 7 }]}>
+                {item.costBreakdown}
+              </Text>
+            )}
           </View>
         ))}
 

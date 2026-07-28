@@ -13,22 +13,19 @@ serve(async (req) => {
   }
 
   try {
-    const { financial, tribology, lang } = await req.json();
+    const { items, lang } = await req.json();
     const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
 
     if (!openrouterKey) {
       throw new Error("OPENROUTER_API_KEY not configured");
     }
 
-    const financialSummary =
-      financial && financial.length > 0
-        ? `\nFINANCIAL DATA (${financial.length} rows):\n${JSON.stringify(financial.slice(0, 50), null, 2)}`
-        : "\nNo financial data provided.";
-
-    const tribologySummary =
-      tribology && tribology.length > 0
-        ? `\nTRIBOLOGY DATA (${tribology.length} rows):\n${JSON.stringify(tribology.slice(0, 50), null, 2)}`
-        : "\nNo tribology data provided.";
+    if (!items || items.length === 0) {
+      return new Response(
+        JSON.stringify({ items: [], summary: "No data to analyze" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const langMap: Record<string, string> = {
       es: "Spanish",
@@ -36,23 +33,35 @@ serve(async (req) => {
       pt: "Portuguese (Brazilian)",
     };
 
-    const prompt = `You are an industrial health diagnostic AI for ALS Global. Analyze the following data and return a JSON array of equipment health assessments.
+    const itemsSummary = items.map((item: Record<string, unknown>, i: number) =>
+      `[${i + 1}] Equipment: ${item.equipment} | Model: ${item.model} | Compartment: ${item.compartment} (${item.compartmentType}) | Site: ${item.site} | Tag: ${item.tag} | Serial: ${item.serial} | Status: ${item.severity} | Cost from file: R$ ${item.cost} | Evaluation: ${item.evaluation} | Recommendation: ${item.recommendation}`
+    ).join("\n");
 
-For each unique equipment/equipment_id found across the data, create one entry with:
-- "equipment": the equipment name/identifier
-- "status": "healthy" if the equipment has R$ 0.00 replacement cost OR is in good condition, "replacement" if it has significant replacement costs or critical issues
-- "cost": the estimated replacement cost in R$ (use 0 for healthy equipment)
-- "recommendation": a brief maintenance recommendation in ${langMap[lang] || "Portuguese (Brazilian)"}
+    const prompt = `You are an industrial health diagnostic expert for ALS Global. You receive equipment data that was ALREADY cross-referenced between tribology lab results and financial cost data.
+
+Your task: analyze each item and provide a final diagnostic summary in ${langMap[lang] || "Portuguese (Brazilian)"}.
+
+For EACH item, return:
+- "equipment": full equipment identifier (e.g. "HARVESTER KOMATSU PC200 - MOTOR")
+- "tag": the fleet tag
+- "serial": the serial number
+- "site": the site/plant
+- "compartment": compartment name
+- "status": "healthy" if status is Normal or Caution AND cost is R$ 0, "replacement" if status is Abnormal or Severe
+- "severity": the original severity (Normal/Caution/Abnormal/Severe)
+- "cost": the total replacement cost in R$ (0 for healthy items)
+- "costBreakdown": detailed cost breakdown from the financial file
+- "evaluation": brief diagnostic based on the tribology evaluation (1-2 sentences)
+- "recommendation": actionable maintenance recommendation in ${langMap[lang] || "Portuguese (Brazilian)"} based on the inspection actions
 
 Rules:
-- Green/Safe (status "healthy", cost R$ 0,00): equipment with no significant issues
-- Red/Alert (status "replacement", cost > 0): equipment with high wear, critical levels, or replacement costs
-- If financial data has replacement costs, use those for the cost field
-- If tribology data shows elements above threshold, flag as replacement
+- GREEN (status "healthy", cost R$ 0,00): Equipment is operating within normal parameters
+- RED (status "replacement", cost > 0): Equipment needs attention, cost is the repair/replacement estimate
+- Keep recommendations SHORT and ACTIONABLE (1-2 sentences max)
 - Return ONLY valid JSON array, no markdown fences, no explanation
 
-${financialSummary}
-${tribologySummary}`;
+DATA:
+${itemsSummary}`;
 
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -67,7 +76,7 @@ ${tribologySummary}`;
         body: JSON.stringify({
           model: "nvidia/nemotron-3-super-120b-a12b:free",
           messages: [{ role: "user", content: prompt }],
-          temperature: 0.3,
+          temperature: 0.2,
           max_tokens: 4096,
         }),
       }
@@ -85,8 +94,7 @@ ${tribologySummary}`;
       );
     }
 
-    const rawText =
-      llmData?.choices?.[0]?.message?.content || "";
+    const rawText = llmData?.choices?.[0]?.message?.content || "";
 
     if (!rawText) {
       return new Response(
@@ -98,9 +106,14 @@ ${tribologySummary}`;
       );
     }
 
-    // Extract JSON array from the response
+    // Extract JSON array
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    const items = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    let analyzedItems = jsonMatch ? JSON.parse(jsonMatch[0]) : items;
+
+    // Ensure all original items are present (LLM might miss some)
+    if (analyzedItems.length < items.length) {
+      analyzedItems = items;
+    }
 
     // Store report in Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -109,12 +122,12 @@ ${tribologySummary}`;
 
     await supabase.from("reports").insert({
       lang,
-      financial_rows: financial?.length || 0,
-      tribology_rows: tribology?.length || 0,
-      items,
+      financial_rows: 0,
+      tribology_rows: items.length,
+      items: analyzedItems,
     });
 
-    return new Response(JSON.stringify({ items }), {
+    return new Response(JSON.stringify({ items: analyzedItems }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
